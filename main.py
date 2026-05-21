@@ -3,6 +3,8 @@ import re
 import time
 import json
 import telebot
+from flask import Flask
+from threading import Thread
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ChatPermissions
 
 TOKEN = os.getenv("TOKEN")
@@ -1241,6 +1243,26 @@ def daily_spam_control(m):
 🛡 Todo spam debe llevar Trato Admin.
 """)
 
+# =========================
+# WEB PARA RENDER
+# =========================
+
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "NAMELESS CORE ACTIVO"
+
+def run_web():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
+
+# Inicia servidor web falso
+Thread(target=run_web).start()
+
+# =========================
+# BOT TELEGRAM
+# =========================
 
 print("NAMELESS CORE ACTIVO")
 bot.infinity_polling()
