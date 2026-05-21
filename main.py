@@ -176,10 +176,17 @@ def seconds_until_midnight():
 
 def botones():
     kb = InlineKeyboardMarkup(row_width=2)
-    kb.add(
-        InlineKeyboardButton("💀 Grupo", url=GROUP_URL),
-        InlineKeyboardButton("👑 Owner", url=OWNER_URL)
-    )
+
+    if GROUP_URL:
+        kb.add(
+            InlineKeyboardButton("💀 Grupo", url=GROUP_URL)
+        )
+
+    if OWNER_URL:
+        kb.add(
+            InlineKeyboardButton("👑 Owner", url=OWNER_URL)
+        )
+
     return kb
 
 
