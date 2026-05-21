@@ -361,22 +361,41 @@ Este es el bot oficial para:
 
 @bot.message_handler(content_types=["new_chat_members"])
 def welcome(m):
+
     for user in m.new_chat_members:
+
         cache_user(m.chat.id, user)
+
+        username = f"@{user.username}" if user.username else "Sin username"
+
         bot.send_message(m.chat.id, f"""
-<b>💀 NUEVO INGRESO</b>
+<b>💀 NAMELESS CORE</b>
 
-━━━━━━━━━━━━━━
-👤 <b>{user.first_name}</b>
-Bienvenido a <b>{GROUP_NAME}</b>
+━━━━━━━━━━━━━━━━━━
+<b>⚡ NUEVO INGRESO DETECTADO</b>
 
+👤 Usuario:
+<b>{user.first_name}</b>
+
+🔗 Username:
+<code>{username}</code>
+
+🆔 ID:
+<code>{user.id}</code>
+
+━━━━━━━━━━━━━━━━━━
 🔥 Publica sin miedo
 ⚠️ Sin flood extremo
 🛡 Respeta y vende limpio
-🛡 Todo spam debe llevar Trato admin
-🍪 Usa /chk para abrir el bot oficial
+🛡 Todo spam debe llevar Trato Admin
 
-━━━━━━━━━━━━━━
+🍪 Usa:
+<code>/chk</code>
+para abrir el bot oficial
+
+━━━━━━━━━━━━━━━━━━
+<b>{GROUP_NAME}</b>
+
 <i>El grupo habla solo.</i>
 """, reply_markup=botones())
 
