@@ -287,6 +287,7 @@ Comandos públicos:
 /reglas
 /owner
 /id
+/staff
 /chk
 /checker
 """, reply_markup=botones())
@@ -334,6 +335,47 @@ def get_id(m):
 🔗 Username: <code>{username}</code>
 🆔 ID: <code>{user_id}</code>
 """)
+
+
+@bot.message_handler(commands=["staff", "admins"])
+def staff(m):
+    try:
+        admins_list = bot.get_chat_administrators(m.chat.id)
+
+        text = """
+<b>👑 STAFF DEL GRUPO</b>
+
+━━━━━━━━━━━━━━
+"""
+
+        count = 0
+
+        for admin in admins_list:
+            user = admin.user
+
+            # No mostrar bots
+            if user.is_bot:
+                continue
+
+            username = f"@{user.username}" if user.username else "Sin username"
+            rango = "Owner" if admin.status == "creator" else "Admin"
+
+            text += f"""
+<b>{rango}</b>
+👤 {user.first_name}
+🔗 <code>{username}</code>
+🆔 <code>{user.id}</code>
+━━━━━━━━━━━━━━
+"""
+            count += 1
+
+        if count == 0:
+            text += "\nNo hay staff visible."
+
+        bot.send_message(m.chat.id, text)
+
+    except Exception as e:
+        bot.reply_to(m, f"❌ Error mostrando staff: <code>{e}</code>")
 
 
 @bot.message_handler(commands=["chk", "checker"])
