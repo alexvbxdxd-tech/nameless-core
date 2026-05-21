@@ -1265,4 +1265,15 @@ Thread(target=run_web).start()
 # =========================
 
 print("NAMELESS CORE ACTIVO")
-bot.infinity_polling()
+
+try:
+    bot.remove_webhook()
+    print("Webhook eliminado, iniciando polling...")
+except Exception as e:
+    print(f"Error quitando webhook: {e}")
+
+bot.infinity_polling(
+    timeout=60,
+    long_polling_timeout=60,
+    skip_pending=True
+)
