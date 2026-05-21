@@ -463,6 +463,10 @@ def ban(m):
         bot.reply_to(m, "Uso: /ban ID motivo o responde con /ban motivo")
         return
 
+    if is_admin(m.chat.id, user_id):
+        bot.reply_to(m, "❌ No puedes moderar otro admin.")
+        return
+    
     try:
         bot.ban_chat_member(m.chat.id, user_id)
         ficha(m.chat.id, "BAN", user_id, name, username, m.from_user, reason)
@@ -479,6 +483,10 @@ def sban(m):
 
     if not user_id:
         bot.reply_to(m, "Uso: /sban ID motivo o responde con /sban motivo")
+        return
+
+    if is_admin(m.chat.id, user_id):
+        bot.reply_to(m, "❌ No puedes moderar otro admin.")
         return
 
     try:
@@ -526,6 +534,10 @@ def kick(m):
         bot.reply_to(m, "Uso: /kick ID motivo o responde con /kick motivo")
         return
 
+    if is_admin(m.chat.id, user_id):
+        bot.reply_to(m, "❌ No puedes moderar otro admin.")
+        return
+    
     try:
         bot.ban_chat_member(m.chat.id, user_id)
         bot.unban_chat_member(m.chat.id, user_id)
@@ -543,6 +555,10 @@ def mute(m):
 
     if not user_id:
         bot.reply_to(m, "Uso: /mute ID motivo o responde con /mute motivo")
+        return
+
+    if is_admin(m.chat.id, user_id):
+        bot.reply_to(m, "❌ No puedes moderar otro admin.")
         return
 
     try:
@@ -581,7 +597,7 @@ def tmute(m):
         if len(parts) < 3:
             bot.reply_to(m, "Uso: /tmute ID 10m motivo")
             return
-
+        
         try:
             user_id = int(parts[1])
         except:
@@ -594,6 +610,10 @@ def tmute(m):
         reason = " ".join(parts[3:]) or "Sin motivo"
 
     seconds = parse_time(duration_text)
+    
+    if is_admin(m.chat.id, user_id):
+        bot.reply_to(m, "❌ No puedes moderar otro admin.")
+        return
 
     if not seconds:
         bot.reply_to(m, "Tiempo inválido. Usa 10s, 10m, 2h o 7d")
@@ -671,6 +691,10 @@ def warn(m):
 
     if not user_id:
         bot.reply_to(m, "Uso: /warn ID motivo o responde con /warn motivo")
+        return
+
+    if is_admin(m.chat.id, user_id):
+        bot.reply_to(m, "❌ No puedes moderar otro admin.")
         return
 
     data = load_warns()
