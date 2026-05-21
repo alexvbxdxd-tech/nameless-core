@@ -7,9 +7,8 @@ bot = telebot.TeleBot(TOKEN)
 
 @bot.message_handler(commands=['start'])
 def start(m):
-
     bot.reply_to(
-        m.chat.id,
+        m,
         "⚡ NAMELESS CORE ONLINE"
     )
 
