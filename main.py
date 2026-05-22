@@ -254,14 +254,13 @@ def botones():
     kb = InlineKeyboardMarkup(row_width=2)
 
     if GROUP_URL:
-        kb.add(
-            InlineKeyboardButton("💀 Grupo", url=GROUP_URL)
-        )
+        kb.add(InlineKeyboardButton("💀 Grupo", url=GROUP_URL))
 
     if OWNER_URL:
-        kb.add(
-            InlineKeyboardButton("👑 Owner", url=OWNER_URL)
-        )
+        kb.add(InlineKeyboardButton("👑 Owner", url=OWNER_URL))
+
+    if CHK_BOT_USERNAME:
+        kb.add(InlineKeyboardButton("🍪 CHK", url=CHK_BOT_URL))
 
     return kb
 
@@ -1171,6 +1170,33 @@ def info_user(m):
 <code>/mute {user_id} motivo</code>
 <code>/warn {user_id} motivo</code>
 """)
+
+
+@bot.message_handler(
+    func=lambda m: (
+        m.chat.type in ["group", "supergroup"]
+        and m.text
+        and (
+            "http://" in m.text.lower()
+            or "https://" in m.text.lower()
+            or "t.me/" in m.text.lower()
+            or "telegram.me/" in m.text.lower()
+            or "www." in m.text.lower()
+        )
+    )
+)
+def anti_links(m):
+    if is_admin(m.chat.id, m.from_user.id):
+        return
+
+    try:
+        bot.delete_message(m.chat.id, m.message_id)
+        bot.send_message(
+            m.chat.id,
+            f"🚫 {m.from_user.first_name}, links eliminados para evitar estafas."
+        )
+    except Exception as e:
+        print(f"Error anti-links: {e}")
 
 
 @bot.message_handler(content_types=["text"])
