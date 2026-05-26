@@ -9,6 +9,8 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ChatPermis
 
 TOKEN = os.getenv("TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID", "0"))
+RANKS_FILE = "ranks.json"
+SETTINGS_FILE = "settings.json"
 
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 
@@ -265,6 +267,62 @@ def botones():
     return kb
 
 
+def load_json_file(path, default):
+    if not os.path.exists(path):
+        return default
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def save_json_file(path, data):
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4)
+
+def get_rank(chat_id, user_id):
+    data = load_json_file(RANKS_FILE, {})
+    return data.get(str(chat_id), {}).get(str(user_id))
+
+def set_rank(chat_id, user_id, rank):
+    data = load_json_file(RANKS_FILE, {})
+    chat_id = str(chat_id)
+    user_id = str(user_id)
+
+    if chat_id not in data:
+        data[chat_id] = {}
+
+    data[chat_id][user_id] = rank
+    save_json_file(RANKS_FILE, data)
+
+def remove_rank(chat_id, user_id):
+    data = load_json_file(RANKS_FILE, {})
+    chat_id = str(chat_id)
+    user_id = str(user_id)
+
+    if chat_id in data and user_id in data[chat_id]:
+        del data[chat_id][user_id]
+        save_json_file(RANKS_FILE, data)
+
+def fake_closed(chat_id):
+    data = load_json_file(SETTINGS_FILE, {})
+    return data.get(str(chat_id), {}).get("fake_closed", False)
+
+def set_fake_closed(chat_id, value):
+    data = load_json_file(SETTINGS_FILE, {})
+    chat_id = str(chat_id)
+
+    if chat_id not in data:
+        data[chat_id] = {}
+
+    data[chat_id]["fake_closed"] = value
+    save_json_file(SETTINGS_FILE, data)
+
+def can_talk_when_closed(chat_id, user_id):
+    if is_admin(chat_id, user_id):
+        return True
+
+    rank = get_rank(chat_id, user_id)
+    return rank in ["FREE", "SELLER", "VIP", "TRUSTED"]
+
+
 # =========================
 # PÚBLICO
 # =========================
@@ -290,6 +348,71 @@ Comandos públicos:
 /chk
 /checker
 """, reply_markup=botones())
+
+
+@bot.message_handler(commands=["cerrar"])
+def cerrar_fake(m):
+    if not admin_only(m):
+        return
+
+    set_fake_closed(m.chat.id, True)
+
+    bot.send_message(m.chat.id, """
+<b>🔒 GRUPO CERRADO</b>
+
+Solo staff y rangos autorizados pueden hablar.
+""")
+
+@bot.message_handler(commands=["abrir"])
+def abrir_fake(m):
+    if not admin_only(m):
+        return
+
+    set_fake_closed(m.chat.id, False)
+
+    bot.send_message(m.chat.id, """
+<b>🔓 GRUPO ABIERTO</b>
+
+Todos pueden hablar otra vez.
+""")
+
+
+@bot.message_handler(commands=["free"])
+def fake_free(m):
+    if not admin_only(m):
+        return
+
+    if not m.reply_to_message:
+        bot.reply_to(m, "Responde al usuario con /free")
+        return
+
+    user = m.reply_to_message.from_user
+    set_rank(m.chat.id, user.id, "FREE")
+
+    bot.send_message(m.chat.id, f"""
+<b>🆓 FREE ACTIVADO</b>
+
+👤 Usuario: <b>{user.first_name}</b>
+🆔 ID: <code>{user.id}</code>
+
+Ahora puede hablar cuando el grupo esté cerrado falsamente.
+""")
+
+
+@bot.message_handler(commands=["unfree"])
+def fake_unfree(m):
+    if not admin_only(m):
+        return
+
+    if not m.reply_to_message:
+        bot.reply_to(m, "Responde al usuario con /unfree")
+        return
+
+    user = m.reply_to_message.from_user
+    remove_rank(m.chat.id, user.id)
+
+    bot.send_message(m.chat.id, f"⚠️ FREE removido: <code>{user.id}</code>")
+
 
 
 @bot.message_handler(commands=["reglas", "rules"])
@@ -352,12 +475,22 @@ def staff(m):
         for admin in admins_list:
             user = admin.user
 
-            # No mostrar bots
             if user.is_bot:
                 continue
 
+            title = admin.custom_title or ""
+
+            if title.upper() == "FREE":
+                continue
+
+            if admin.status == "creator":
+                rango = "Owner"
+            elif title.upper() == "SELLER":
+                rango = "Seller"
+            else:
+                rango = "Admin"
+
             username = f"@{user.username}" if user.username else "Sin username"
-            rango = "Owner" if admin.status == "creator" else "Admin"
 
             text += f"""
 <b>{rango}</b>
@@ -920,7 +1053,7 @@ def purge(m):
 
 @bot.message_handler(commands=["pin"])
 def pin(m):
-    if not admin_only(m):
+    if not can_talk_when_closed(m.chat.id, m.from_user.id):
         return
 
     if not m.reply_to_message:
@@ -929,7 +1062,7 @@ def pin(m):
 
     try:
         bot.pin_chat_message(m.chat.id, m.reply_to_message.message_id)
-        bot.send_message(m.chat.id, "📌 Mensaje fijado.")
+        bot.delete_message(m.chat.id, m.message_id)
     except Exception as e:
         bot.reply_to(m, f"❌ Error: <code>{e}</code>")
 
@@ -1111,6 +1244,8 @@ def unseller(m):
 
     except Exception as e:
         bot.reply_to(m, f"❌ Error: <code>{e}</code>")
+
+
         
 @bot.message_handler(commands=["info"])
 def info_user(m):
@@ -1197,6 +1332,27 @@ def anti_links(m):
         )
     except Exception as e:
         print(f"Error anti-links: {e}")
+
+
+@bot.message_handler(content_types=["text", "photo", "video", "document", "sticker", "audio", "voice", "animation"])
+def fake_lock_filter(m):
+
+    if m.chat.type not in ["group", "supergroup"]:
+        return
+
+    if m.text and m.text.startswith("/"):
+        return
+
+    if not fake_closed(m.chat.id):
+        return
+
+    if can_talk_when_closed(m.chat.id, m.from_user.id):
+        return
+
+    try:
+        bot.delete_message(m.chat.id, m.message_id)
+    except Exception as e:
+        print(f"Error fake lock: {e}")
 
 
 @bot.message_handler(content_types=["text"])
