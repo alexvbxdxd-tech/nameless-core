@@ -17,6 +17,9 @@ bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 GROUP_NAME = os.getenv("GROUP_NAME")
 OWNER_URL = os.getenv("OWNER_URL")
 GROUP_URL = os.getenv("GROUP_URL")
+COOKIES_BOT_USERNAME = os.getenv("COOKIES_BOT_USERNAME")
+COOKIES_BOT_URL = f"https://t.me/{COOKIES_BOT_USERNAME}"
+
 CHK_BOT_USERNAME = os.getenv("CHK_BOT_USERNAME")
 
 CHK_BOT_URL = f"https://t.me/{CHK_BOT_USERNAME}"
@@ -262,7 +265,10 @@ def botones():
         kb.add(InlineKeyboardButton("👑 Owner", url=OWNER_URL))
 
     if CHK_BOT_USERNAME:
-        kb.add(InlineKeyboardButton("🍪 CHK", url=CHK_BOT_URL))
+        kb.add(InlineKeyboardButton("🎯 CHK", url=CHK_BOT_URL))
+
+    if COOKIES_BOT_USERNAME:
+        kb.add(InlineKeyboardButton("🍪 Cookies", url=COOKIES_BOT_URL))
 
     return kb
 
