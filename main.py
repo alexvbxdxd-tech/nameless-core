@@ -727,6 +727,31 @@ def add_subscription(m):
 """)
 
 
+@bot.channel_post_handler(commands=["add"])
+def add_subscription_channel(m):
+    if m.chat.type != "channel":
+        return
+
+    parts = m.text.split()
+
+    if len(parts) < 3:
+        bot.reply_to(m, "Uso: /add ID 30")
+        return
+
+    user_id = int(parts[1])
+    days = int(parts[2])
+
+    expires = add_sub(m.chat.id, user_id, days)
+
+    bot.send_message(m.chat.id, f"""
+<b>✅ SUSCRIPCIÓN ACTIVADA</b>
+
+🆔 ID: <code>{user_id}</code>
+📆 Días: <code>{days}</code>
+⏳ Expira: <code>{time.strftime("%d/%m/%Y %H:%M:%S", time.localtime(expires))}</code>
+""")
+
+
 @bot.message_handler(commands=["remove"])
 def remove_subscription(m):
     if not admin_only(m):
