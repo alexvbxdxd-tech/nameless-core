@@ -11,6 +11,7 @@ TOKEN = os.getenv("TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID", "0"))
 RANKS_FILE = "ranks.json"
 SETTINGS_FILE = "settings.json"
+SUBS_FILE = "subs.json"
 
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 
@@ -278,6 +279,41 @@ def load_json_file(path, default):
         return default
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
+
+def load_subs():
+    return load_json_file(SUBS_FILE, {})
+
+def save_subs(data):
+    save_json_file(SUBS_FILE, data)
+
+def add_sub(chat_id, user_id, days):
+    data = load_subs()
+    chat_id = str(chat_id)
+    user_id = str(user_id)
+
+    if chat_id not in data:
+        data[chat_id] = {}
+
+    expires = int(time.time() + days * 86400)
+
+    data[chat_id][user_id] = {
+        "expires": expires,
+        "days": days,
+        "added_at": now_date()
+    }
+
+    save_subs(data)
+    return expires
+
+def remove_sub(chat_id, user_id):
+    data = load_subs()
+    chat_id = str(chat_id)
+    user_id = str(user_id)
+
+    if chat_id in data and user_id in data[chat_id]:
+        del data[chat_id][user_id]
+        save_subs(data)
+
 
 def save_json_file(path, data):
     with open(path, "w", encoding="utf-8") as f:
@@ -633,6 +669,11 @@ def panel(m):
 
 <b>Owner:</b>
 
+/add ID días
+/add responder días
+
+/remove ID
+/remove responder
 /promote responder
 /demote responder
 /seller responder
@@ -646,6 +687,73 @@ def panel(m):
 10m = minutos
 2h = horas
 7d = días
+""")
+
+@bot.message_handler(commands=["add"])
+def add_subscription(m):
+    if not admin_only(m):
+        return
+
+    parts = m.text.split()
+
+    if m.reply_to_message:
+        if len(parts) < 2:
+            bot.reply_to(m, "Uso: responde al usuario con /add 30")
+            return
+
+        user = m.reply_to_message.from_user
+        user_id = user.id
+        name = user.first_name
+        days = int(parts[1])
+
+    else:
+        if len(parts) < 3:
+            bot.reply_to(m, "Uso: /add ID 30")
+            return
+
+        user_id = int(parts[1])
+        name = f"ID {user_id}"
+        days = int(parts[2])
+
+    expires = add_sub(m.chat.id, user_id, days)
+
+    bot.send_message(m.chat.id, f"""
+<b>✅ SUSCRIPCIÓN ACTIVADA</b>
+
+👤 Usuario: <b>{name}</b>
+🆔 ID: <code>{user_id}</code>
+📆 Días: <code>{days}</code>
+⏳ Expira: <code>{time.strftime("%d/%m/%Y %H:%M:%S", time.localtime(expires))}</code>
+""")
+
+
+@bot.message_handler(commands=["remove"])
+def remove_subscription(m):
+    if not admin_only(m):
+        return
+
+    user_id, name, username, reason = get_target(m)
+
+    if not user_id:
+        bot.reply_to(m, "Uso: /remove ID o responde con /remove")
+        return
+
+    remove_sub(m.chat.id, user_id)
+
+    try:
+        bot.ban_chat_member(m.chat.id, user_id)
+        bot.unban_chat_member(m.chat.id, user_id)
+    except Exception as e:
+        bot.reply_to(m, f"❌ Error sacando usuario: <code>{e}</code>")
+        return
+
+    bot.send_message(m.chat.id, f"""
+<b>🗑 SUSCRIPCIÓN REMOVIDA</b>
+
+👤 Usuario: {name}
+🆔 ID: <code>{user_id}</code>
+
+Fue sacado del grupo.
 """)
 
 
@@ -1473,6 +1581,46 @@ def daily_spam_control(m):
 🛡 Todo spam debe llevar Trato Admin.
 """)
 
+
+def subscription_checker():
+    while True:
+        try:
+            data = load_subs()
+            now = int(time.time())
+            changed = False
+
+            for chat_id in list(data.keys()):
+                for user_id in list(data[chat_id].keys()):
+                    expires = data[chat_id][user_id]["expires"]
+
+                    if now >= expires:
+                        try:
+                            bot.ban_chat_member(int(chat_id), int(user_id))
+                            bot.unban_chat_member(int(chat_id), int(user_id))
+
+                            bot.send_message(int(chat_id), f"""
+<b>⏳ SUSCRIPCIÓN EXPIRADA</b>
+
+🆔 Usuario: <code>{user_id}</code>
+🚪 Fue sacado del grupo.
+
+Para volver, debe renovar.
+""")
+                        except Exception as e:
+                            print(f"Error sacando expirado {user_id}: {e}")
+
+                        del data[chat_id][user_id]
+                        changed = True
+
+            if changed:
+                save_subs(data)
+
+        except Exception as e:
+            print(f"Error subscription_checker: {e}")
+
+        time.sleep(60)
+
+
 # =========================
 # WEB PARA RENDER
 # =========================
@@ -1489,6 +1637,7 @@ def run_web():
 
 # Inicia servidor web falso
 Thread(target=run_web).start()
+Thread(target=subscription_checker, daemon=True).start()
 
 # =========================
 # BOT TELEGRAM
