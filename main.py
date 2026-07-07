@@ -1448,8 +1448,23 @@ def info_user(m):
 
 @bot.message_handler(commands=["viplist"])
 def viplist(m):
-    if not admin_only(m):
+    if not owner_only(m):
         return
+
+    if m.chat.type == "private":
+        data = load_subs()
+
+        if not data:
+            bot.send_message(m.chat.id, "No hay suscripciones.")
+            return
+
+        chat_id = next(iter(data.keys()))
+    else:
+        chat_id = str(m.chat.id)
+
+    subs = load_subs()
+    users = load_users()
+    
 
     subs = load_subs()
     users = load_users()
