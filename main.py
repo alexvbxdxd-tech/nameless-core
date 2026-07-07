@@ -1446,6 +1446,87 @@ def info_user(m):
 """)
 
 
+@bot.message_handler(commands=["viplist"])
+def viplist(m):
+    if not admin_only(m):
+        return
+
+    subs = load_subs()
+    users = load_users()
+
+    chat_id = str(m.chat.id)
+
+    if chat_id not in subs or not subs[chat_id]:
+        bot.send_message(m.chat.id, "❌ No hay VIP activos.")
+        return
+
+    now = int(time.time())
+
+    lista = []
+
+    for user_id, info in subs[chat_id].items():
+
+        expires = info.get("expires", 0)
+
+        if expires <= now:
+            continue
+
+        dias = max(0, int((expires - now) / 86400))
+
+        cache = users.get(chat_id, {}).get(user_id, {})
+
+        nombre = "Sin registro"
+        if cache.get("names"):
+            nombre = cache["names"][-1]
+
+        username = None
+        if cache.get("usernames"):
+            username = cache["usernames"][-1]
+
+        fecha = time.strftime(
+            "%d/%m/%Y",
+            time.localtime(expires)
+        )
+
+        lista.append({
+            "dias": dias,
+            "id": user_id,
+            "nombre": nombre,
+            "username": username,
+            "fecha": fecha
+        })
+
+    if not lista:
+        bot.send_message(m.chat.id, "❌ No hay VIP activos.")
+        return
+
+    lista.sort(key=lambda x: x["dias"])
+
+    texto = f"<b>💎 VIP ACTIVOS ({len(lista)})</b>\n\n"
+
+    for i, vip in enumerate(lista, 1):
+
+        if vip["username"]:
+            usuario = f"@{vip['username']}"
+        else:
+            usuario = f'<a href="tg://user?id={vip["id"]}">Abrir perfil</a>'
+
+        texto += (
+            f"<b>{i}.</b> {vip['nombre']}\n"
+            f"🔗 {usuario}\n"
+            f"🆔 <code>{vip['id']}</code>\n"
+            f"⏳ <b>{vip['dias']} días</b>\n"
+            f"📅 {vip['fecha']}\n\n"
+        )
+
+    bot.send_message(
+        m.chat.id,
+        texto,
+        disable_web_page_preview=True
+    )
+
+
+
 @bot.message_handler(
     func=lambda m: (
         m.chat.type in ["group", "supergroup"]
